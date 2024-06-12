@@ -1,8 +1,7 @@
 import numpy as np
-import librosa
-import os
+import soundfile as sf
 from sklearn.metrics import accuracy_score
-
+import os
 
 def load_audio_files(directory):
     audio_files = []
@@ -10,7 +9,7 @@ def load_audio_files(directory):
     for filename in os.listdir(directory):
         if filename.endswith(".wav"):
             filepath = os.path.join(directory, filename)
-            audio, sr = librosa.load(filepath, sr=None)
+            audio, sr = sf.read(filepath)
             label = int(filename[0])
             audio_files.append(audio)
             labels.append(label)
