@@ -1,8 +1,9 @@
 import numpy as np
 import soundfile as sf
+import librosa
 import os
 from sklearn.metrics import accuracy_score
-
+from tqdm import tqdm
 
 def load_audio_files(directory):
     audio_files = []
@@ -19,21 +20,21 @@ def load_audio_files(directory):
 
 def calculate_average_representations(audio_files, labels):
     averages = {}
-    for digit in range(10):
+    for digit in tqdm(range(10)):
         digit_audio = [audio_files[i] for i in range(len(audio_files)) if labels[i] == digit]
-        # Convertir cada señal al dominio de la frecuencia
-        digit_audio_fft = [np.abs(np.fft.fft(audio)) for audio in digit_audio]
-        # Calcular la representación promedio en el dominio de la frecuencia
-        averages[digit] = np.mean(digit_audio_fft, axis=0)
+        # Convertir cada señal a MFCC
+        digit_audio_mfcc = [librosa.feature.mfcc(y=audio, sr=16000, n_mfcc=13, n_fft=19000) for audio in digit_audio]
+        # Calcular la representación promedio en el dominio MFCC
+        averages[digit] = np.mean([np.mean(mfcc, axis=1) for mfcc in digit_audio_mfcc], axis=0)
     return averages
 
 
 def classify(audio, averages):
-    audio_fft = np.abs(np.fft.fft(audio))
+    audio_mfcc = np.mean(librosa.feature.mfcc(y=audio, sr=16000, n_mfcc=13, n_fft=19000), axis=1)
     min_distance = float('inf')
     predicted_digit = None
     for digit, avg_rep in averages.items():
-        distance = np.linalg.norm(audio_fft - avg_rep)
+        distance = np.linalg.norm(audio_mfcc - avg_rep)
         if distance < min_distance:
             min_distance = distance
             predicted_digit = digit
@@ -48,10 +49,10 @@ test_audio_files, test_labels = load_audio_files("../data/test")
 averages = calculate_average_representations(audio_files, labels)
 
 # Clasificar los audios del conjunto de prueba
-predictions = [(label, classify(audio, averages)) for audio, label in zip(test_audio_files, test_labels)]
+predictions = [(label, classify(audio, averages)) for audio, label in tqdm(zip(test_audio_files, test_labels))]
 
 # Evaluar el rendimiento
 accuracy = accuracy_score(test_labels, [p[1] for p in predictions])
 print(f"Accuracy: {accuracy * 100:.2f}%")
-for p in predictions:
-    print(f"True digit: {p[0]}, Predicted digit: {p[1]}")
+# for p in predictions:
+#     print(f"True digit: {p[0]}, Predicted digit: {p[1]}")

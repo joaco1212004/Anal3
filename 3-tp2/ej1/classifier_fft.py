@@ -1,7 +1,8 @@
 import numpy as np
 import soundfile as sf
-from sklearn.metrics import accuracy_score
 import os
+from sklearn.metrics import accuracy_score
+
 
 def load_audio_files(directory):
     audio_files = []
@@ -20,15 +21,19 @@ def calculate_average_representations(audio_files, labels):
     averages = {}
     for digit in range(10):
         digit_audio = [audio_files[i] for i in range(len(audio_files)) if labels[i] == digit]
-        averages[digit] = np.mean(digit_audio, axis=0)
+        # Convertir cada señal al dominio de la frecuencia
+        digit_audio_fft = [np.abs(np.fft.fft(audio)) for audio in digit_audio]
+        # Calcular la representación promedio en el dominio de la frecuencia
+        averages[digit] = np.mean(digit_audio_fft, axis=0)
     return averages
 
 
 def classify(audio, averages):
+    audio_fft = np.abs(np.fft.fft(audio))
     min_distance = float('inf')
     predicted_digit = None
     for digit, avg_rep in averages.items():
-        distance = np.linalg.norm(audio - avg_rep)
+        distance = np.linalg.norm(audio_fft - avg_rep)
         if distance < min_distance:
             min_distance = distance
             predicted_digit = digit
@@ -36,11 +41,11 @@ def classify(audio, averages):
 
 
 # Cargar los archivos de audio
-train_audio_files, train_labels = load_audio_files("../data/train")
+audio_files, labels = load_audio_files("../data/train")
 test_audio_files, test_labels = load_audio_files("../data/test")
 
 # Calcular las representaciones promedio con el conjunto de entrenamiento
-averages = calculate_average_representations(train_audio_files, train_labels)
+averages = calculate_average_representations(audio_files, labels)
 
 # Clasificar los audios del conjunto de prueba
 predictions = [(label, classify(audio, averages)) for audio, label in zip(test_audio_files, test_labels)]
