@@ -1,9 +1,10 @@
 import glob
-import soundfile as sf
-from torch.utils.data import Dataset
+import os
 import torch
+from torch.utils.data import Dataset
 import numpy as np
 import librosa
+import soundfile as sf
 
 class AudioMNISTDataset(Dataset):
     def __init__(self, data_path, feature, test=False):
@@ -13,25 +14,25 @@ class AudioMNISTDataset(Dataset):
 
     def __len__(self):
         if not self.test:
-            return len(glob.glob(self.data_path+'/train/*'))
+            return len(glob.glob(os.path.join(self.data_path, 'train', '*')))
         else:
-            return len(glob.glob(self.data_path+'/test/*'))
+            return len(glob.glob(os.path.join(self.data_path, 'test', '*')))
 
     def __getitem__(self, idx):
         # Get audio paths
         if not self.test:
-            audio_paths = glob.glob(self.data_path + '/train/*')
+            audio_paths = glob.glob(os.path.join(self.data_path, 'train', '*'))
         else:
-            audio_paths = glob.glob(self.data_path + '/test/*')
-        
+            audio_paths = glob.glob(os.path.join(self.data_path, 'test', '*'))
+
         # Get audio data and labels
         audio, fs = sf.read(audio_paths[idx])
-        label = audio_paths[idx].split('/')[-1].split('_')[0]
+        label = os.path.basename(audio_paths[idx]).split('_')[0]
         # Extract features
         if self.feature == 'raw_waveform':
             feat = torch.tensor(audio, dtype=torch.float32)
         elif self.feature == 'audio_spectrum':
-            feat = self.dft(audio,fs)
+            feat = self.dft(audio, fs)
         elif self.feature == 'mfcc':
             feat = self.mfcc(audio, fs)
         
@@ -50,9 +51,11 @@ class AudioMNISTDataset(Dataset):
         Returns:
             audio_f (Tensor): spectral representation of the audio data.
         """
-
-        audio = np.abs(np.fft.fft(audio))
-        return torch.tensor(audio, dtype=torch.float32)
+        audio_f = np.fft.fft(audio)
+        # Preserve only positive frequencies, ensuring the correct length
+        audio_f = np.abs(audio_f[:len(audio_f) // 2 + 1])
+        audio_f = audio_f / np.max(audio_f)
+        return torch.tensor(audio_f, dtype=torch.float32)
 
     @staticmethod
     def mfcc(audio, fs):
@@ -61,11 +64,19 @@ class AudioMNISTDataset(Dataset):
         Args:
             audio (Numpy array): audio file to process.
             fs (float): sampling frequency of the audio file.
-            mfcc_params (dictionary): the keys are 'n_fft', the length of the FFTs, and 'window', the type of window to be used in the STFTs (see scipy.signal.get_window)
         Returns:
             mfcc (Tensor): MFCC of the input audio file.
         """
-        audio = librosa.feature.mfcc(y=audio, sr=16000, n_mfcc=13)
-        audio = np.mean(audio, axis=1)  # Promedio de los coeficientes MFCC
-        return torch.tensor(audio, dtype=torch.float32)
+        mfcc_features = librosa.feature.mfcc(y=audio, sr=fs, n_mfcc=13)
+        mfcc_features = np.mean(mfcc_features, axis=1)
+        mfcc_features = mfcc_features.flatten()
+
+        # Ajustar el vector a la longitud esperada
+        expected_length = 320
+        if len(mfcc_features) < expected_length:
+            mfcc_features = np.pad(mfcc_features, (0, expected_length - len(mfcc_features)), 'constant')
+        elif len(mfcc_features) > expected_length:
+            mfcc_features = mfcc_features[:expected_length]
+
+        return torch.tensor(mfcc_features, dtype=torch.float32)
 
