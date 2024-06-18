@@ -28,10 +28,9 @@ class Trainer():
             # Model in train mode
             self.model.train()
             # Makes predictions
-            #in_data = in_data.reshape((30,1,8000))
+            # Verificar las dimensiones de entrada
+            print(f"Train step - Input data shape: {in_data.shape}")
             pred_data = self.model(in_data)
-            #pred_data = pred_data.reshape((32,9))
-            #out_data = out_data.reshape((32,1))
             # Computes loss
             loss = self.loss(pred_data, out_data)
             # Computes gradients
@@ -51,10 +50,11 @@ class Trainer():
         trigger_times = 0
         patience = 5
         min_val_loss = 100
-        for epoch in range(1,self.num_epochs+1):
+        for epoch in range(1, self.num_epochs + 1):
             # Training
             for data in tqdm(self.train_dataloader):
                 in_data, out_data = data[0].to(self.device), data[1].to(self.device)
+                print(f"Train loop - Batch input data shape: {in_data.shape}")
                 loss = train_step(in_data, out_data)
                 self.train_loss.append(loss)
             
@@ -65,7 +65,7 @@ class Trainer():
                     # Model in eval mode
                     self.model.eval()
                     # Make predictions
-                    #in_val_data = in_val_data.reshape((30,1,8000))
+                    print(f"Validation - Input data shape: {in_val_data.shape}")
                     pred_val_data = self.model(in_val_data)
                     # Compute loss
                     val_loss = self.loss(pred_val_data, out_val_data).item()
@@ -76,22 +76,23 @@ class Trainer():
                     self.val_loss.append(val_loss)
 
             print(f'Epoch {epoch} of {self.num_epochs}')
-            print("\n METRICS"+ 10 * ' ' + 'Training Set' + 10 * ' ' + 'Validation Set')
-            print(f"{len('METRICS' + 11* ' ')* ' '}{loss:.2e}{14 * ' '}{val_loss:.2e}")
+            print("\n METRICS" + 10 * ' ' + 'Training Set' + 10 * ' ' + 'Validation Set')
+            print(f"{len('METRICS' + 11 * ' ') * ' '}{loss:.2e}{14 * ' '}{val_loss:.2e}")
             self.writer.add_scalar('Loss/train', loss, epoch)
             self.writer.add_scalar('Loss/val', val_loss, epoch)
             if val_loss > last_loss:
                 trigger_times += 1
             else:
-            	trigger_times = 0
+                trigger_times = 0
             if trigger_times >= patience:
                 print('Early Stopping!')
-                torch.save(best_state, self.save_root_path+f'/{self.model_name}/best_model.pt')
+                torch.save(best_state, self.save_root_path + f'/{self.model_name}/best_model.pt')
                 break
             print(f'Trigger times: {trigger_times}')
             print(f'Last loss: {last_loss}')
             print(f'Current loss: {val_loss}')
             last_loss = val_loss
             if epoch % self.save_period == 0:
-                torch.save(self.model.state_dict(), self.save_root_path+f'/{self.model_name}/{epoch}.pt')
+                torch.save(self.model.state_dict(), self.save_root_path + f'/{self.model_name}/{epoch}.pt')
+
        
