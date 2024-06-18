@@ -3,7 +3,9 @@ import soundfile as sf
 import os
 import scipy.signal as sig
 from sklearn.metrics import accuracy_score
-
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def load_audio_files(directory):
     audio_files = []
@@ -137,3 +139,29 @@ accuracy = accuracy_score(test_labels, [p[1] for p in predictions])
 print(f"Accuracy: {accuracy * 100:.2f}%")
 # for p in predictions:
 #     print(f"Real: {p[0]}, Predecido: {p[1]}")
+
+# Matriz de confusion
+true_labels = [p[0] for p in predictions]
+predicted_labels = [p[1] for p in predictions]
+cm = confusion_matrix(true_labels, predicted_labels)
+plt.figure(figsize=(10, 7))
+sns.heatmap(cm, annot=True, fmt='d')
+plt.xlabel('Predecido')
+plt.ylabel('Real')
+plt.show()
+
+# Plot de onda cruda y FFT
+sample = train_audio_files[0]
+sample_fft = np.abs(np.fft.fft(sample))
+
+# Plot onda cruda
+plt.figure(figsize=(10, 7))
+plt.plot(sample)
+plt.title('Onda cruda')
+plt.show()
+
+# Plot FFT
+plt.figure(figsize=(10, 7))
+plt.plot(sample_fft)
+plt.title('FFT')
+plt.show()

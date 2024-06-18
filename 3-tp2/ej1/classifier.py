@@ -3,6 +3,9 @@ import soundfile as sf
 from sklearn.metrics import accuracy_score
 import scipy.signal as sig
 import os
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def load_audio_files(directory):
     audio_files = []
@@ -132,3 +135,13 @@ accuracy = accuracy_score(test_labels, [p[1] for p in predictions])
 print(f"Accuracy: {accuracy * 100:.2f}%")
 # for p in predictions:
 #     print(f"Real: {p[0]}, Predecido: {p[1]}")
+
+# Matriz de confusion
+true_labels = [p[0] for p in predictions]
+predicted_labels = [p[1] for p in predictions]
+cm = confusion_matrix(true_labels, predicted_labels)
+plt.figure(figsize=(10, 7))
+sns.heatmap(cm, annot=True, fmt='d')
+plt.xlabel('Predecido')
+plt.ylabel('Real')
+plt.show()
